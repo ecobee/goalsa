@@ -29,8 +29,9 @@ func TestCapture(t *testing.T) {
 
 	b2, err := c.ReadS32()
 
+	samples := 44100 / 32
 	a.NoError(err, "read samples ok")
-	a.Equal(len(b2), 220, "220 samples read")
+	a.Equal(len(b2), samples, "correct number of samples read")
 
 	c.Close()
 }
