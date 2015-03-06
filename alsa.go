@@ -8,6 +8,7 @@ package alsa
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"runtime"
 	"unsafe"
 )
@@ -174,11 +175,18 @@ func (c *CaptureDevice) ReadS8() (buffer []int8, err error) {
 	if err != nil {
 		return nil, err
 	}
-	buffer = make([]int8, frames * c.Channels)
-	cBuffer := (*[1 << 30]C.int8_t)(unsafe.Pointer(bufPtr))
+	length := frames * c.Channels
+	buffer = make([]int8, length)
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  length,
+                Cap:  length,
+        }
+        cBuffer := *(*[]C.int8_t)(unsafe.Pointer(&hdr))
 	for i := 0; i < frames; i++ {
 		for ch := 0; ch < c.Channels; ch++ {
-			buffer[i + ch] = int8(cBuffer[i + ch])
+			offs := i * c.Channels + ch
+			buffer[offs] = int8(cBuffer[offs])
 		}
 	}
 	C.free(bufPtr)
@@ -195,11 +203,18 @@ func (c *CaptureDevice) ReadU8() (buffer []uint8, err error) {
 	if err != nil {
 		return nil, err
 	}
-	buffer = make([]uint8, frames * c.Channels)
-	cBuffer := (*[1 << 30]C.uint8_t)(unsafe.Pointer(bufPtr))
+	length := frames * c.Channels
+	buffer = make([]uint8, length)
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  length,
+                Cap:  length,
+        }
+        cBuffer := *(*[]C.uint8_t)(unsafe.Pointer(&hdr))
 	for i := 0; i < frames; i++ {
 		for ch := 0; ch < c.Channels; ch++ {
-			buffer[i + ch] = uint8(cBuffer[i + ch])
+			offs := i * c.Channels + ch
+			buffer[offs] = uint8(cBuffer[offs])
 		}
 	}
 	C.free(bufPtr)
@@ -216,11 +231,18 @@ func (c *CaptureDevice) ReadS16() (buffer []int16, err error) {
 	if err != nil {
 		return nil, err
 	}
-	buffer = make([]int16, frames * c.Channels)
-	cBuffer := (*[1 << 30]C.int16_t)(unsafe.Pointer(bufPtr))
+	length := frames * c.Channels
+	buffer = make([]int16, length)
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  length,
+                Cap:  length,
+        }
+        cBuffer := *(*[]C.int16_t)(unsafe.Pointer(&hdr))
 	for i := 0; i < frames; i++ {
 		for ch := 0; ch < c.Channels; ch++ {
-			buffer[i + ch] = int16(cBuffer[i + ch])
+			offs := i * c.Channels + ch
+			buffer[offs] = int16(cBuffer[offs])
 		}
 	}
 	C.free(bufPtr)
@@ -237,11 +259,18 @@ func (c *CaptureDevice) ReadU16() (buffer []uint16, err error) {
 	if err != nil {
 		return nil, err
 	}
-	buffer = make([]uint16, frames * c.Channels)
-	cBuffer := (*[1 << 30]C.uint16_t)(unsafe.Pointer(bufPtr))
+	length := frames * c.Channels
+	buffer = make([]uint16, length)
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  length,
+                Cap:  length,
+        }
+        cBuffer := *(*[]C.uint16_t)(unsafe.Pointer(&hdr))
 	for i := 0; i < frames; i++ {
 		for ch := 0; ch < c.Channels; ch++ {
-			buffer[i + ch] = uint16(cBuffer[i + ch])
+			offs := i * c.Channels + ch
+			buffer[offs] = uint16(cBuffer[offs])
 		}
 	}
 	C.free(bufPtr)
@@ -258,11 +287,18 @@ func (c *CaptureDevice) ReadS32() (buffer []int32, err error) {
 	if err != nil {
 		return nil, err
 	}
-	buffer = make([]int32, frames * c.Channels)
-	cBuffer := (*[1 << 30]C.int32_t)(unsafe.Pointer(bufPtr))
+	length := frames * c.Channels
+	buffer = make([]int32, length)
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  length,
+                Cap:  length,
+        }
+        cBuffer := *(*[]C.int32_t)(unsafe.Pointer(&hdr))
 	for i := 0; i < frames; i++ {
 		for ch := 0; ch < c.Channels; ch++ {
-			buffer[i + ch] = int32(cBuffer[i + ch])
+			offs := i * c.Channels + ch
+			buffer[offs] = int32(cBuffer[offs])
 		}
 	}
 	C.free(bufPtr)
@@ -279,11 +315,18 @@ func (c *CaptureDevice) ReadU32() (buffer []uint32, err error) {
 	if err != nil {
 		return nil, err
 	}
-	buffer = make([]uint32, frames * c.Channels)
-	cBuffer := (*[1 << 30]C.uint32_t)(unsafe.Pointer(bufPtr))
+	length := frames * c.Channels
+	buffer = make([]uint32, length)
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  length,
+                Cap:  length,
+        }
+        cBuffer := *(*[]C.uint32_t)(unsafe.Pointer(&hdr))
 	for i := 0; i < frames; i++ {
 		for ch := 0; ch < c.Channels; ch++ {
-			buffer[i + ch] = uint32(cBuffer[i + ch])
+			offs := i * c.Channels + ch
+			buffer[offs] = uint32(cBuffer[offs])
 		}
 	}
 	C.free(bufPtr)
@@ -300,11 +343,18 @@ func (c *CaptureDevice) ReadFloat() (buffer []float32, err error) {
 	if err != nil {
 		return nil, err
 	}
-	buffer = make([]float32, frames * c.Channels)
-	cBuffer := (*[1 << 30]C.float)(unsafe.Pointer(bufPtr))
+	length := frames * c.Channels
+	buffer = make([]float32, length)
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  length,
+                Cap:  length,
+        }
+        cBuffer := *(*[]C.float)(unsafe.Pointer(&hdr))
 	for i := 0; i < frames; i++ {
 		for ch := 0; ch < c.Channels; ch++ {
-			buffer[i + ch] = float32(cBuffer[i + ch])
+			offs := i * c.Channels + ch
+			buffer[offs] = float32(cBuffer[offs])
 		}
 	}
 	C.free(bufPtr)
@@ -366,7 +416,12 @@ func (p *PlaybackDevice) WriteS8(buffer []int8) (frames int, err error) {
 	}
 	samples := len(buffer)
 	bufPtr := C.malloc(C.size_t(samples))
-	cBuffer := (*[1 << 30]C.int8_t)(unsafe.Pointer(bufPtr))
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  samples,
+                Cap:  samples,
+        }
+        cBuffer := *(*[]C.int8_t)(unsafe.Pointer(&hdr))
 	for i := 0; i < samples; i++ {
 		cBuffer[i] = C.int8_t(buffer[i])
 	}
@@ -382,7 +437,12 @@ func (p *PlaybackDevice) WriteU8(buffer []uint8) (frames int, err error) {
 	}
 	samples := len(buffer)
 	bufPtr := C.malloc(C.size_t(samples))
-	cBuffer := (*[1 << 30]C.uint8_t)(unsafe.Pointer(bufPtr))
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  samples,
+                Cap:  samples,
+        }
+        cBuffer := *(*[]C.uint8_t)(unsafe.Pointer(&hdr))
 	for i := 0; i < samples; i++ {
 		cBuffer[i] = C.uint8_t(buffer[i])
 	}
@@ -398,7 +458,12 @@ func (p *PlaybackDevice) WriteS16(buffer []int16) (frames int, err error) {
 	}
 	samples := len(buffer)
 	bufPtr := C.malloc(C.size_t(samples) * 2)
-	cBuffer := (*[1 << 30]C.int16_t)(unsafe.Pointer(bufPtr))
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  samples,
+                Cap:  samples,
+        }
+        cBuffer := *(*[]C.int16_t)(unsafe.Pointer(&hdr))
 	for i := 0; i < samples; i++ {
 		cBuffer[i] = C.int16_t(buffer[i])
 	}
@@ -414,7 +479,12 @@ func (p *PlaybackDevice) WriteU16(buffer []uint16) (frames int, err error) {
 	}
 	samples := len(buffer)
 	bufPtr := C.malloc(C.size_t(samples) * 2)
-	cBuffer := (*[1 << 30]C.uint16_t)(unsafe.Pointer(bufPtr))
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  samples,
+                Cap:  samples,
+        }
+        cBuffer := *(*[]C.uint16_t)(unsafe.Pointer(&hdr))
 	for i := 0; i < samples; i++ {
 		cBuffer[i] = C.uint16_t(buffer[i])
 	}
@@ -430,7 +500,12 @@ func (p *PlaybackDevice) WriteS32(buffer []int32) (frames int, err error) {
 	}
 	samples := len(buffer)
 	bufPtr := C.malloc(C.size_t(samples) * 4)
-	cBuffer := (*[1 << 30]C.int32_t)(unsafe.Pointer(bufPtr))
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  samples,
+                Cap:  samples,
+        }
+        cBuffer := *(*[]C.int32_t)(unsafe.Pointer(&hdr))
 	for i := 0; i < samples; i++ {
 		cBuffer[i] = C.int32_t(buffer[i])
 	}
@@ -446,7 +521,12 @@ func (p *PlaybackDevice) WriteU32(buffer []uint32) (frames int, err error) {
 	}
 	samples := len(buffer)
 	bufPtr := C.malloc(C.size_t(samples) * 4)
-	cBuffer := (*[1 << 30]C.uint32_t)(unsafe.Pointer(bufPtr))
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  samples,
+                Cap:  samples,
+        }
+        cBuffer := *(*[]C.uint32_t)(unsafe.Pointer(&hdr))
 	for i := 0; i < samples; i++ {
 		cBuffer[i] = C.uint32_t(buffer[i])
 	}
@@ -462,7 +542,12 @@ func (p *PlaybackDevice) WriteFloat(buffer []float32) (frames int, err error) {
 	}
 	samples := len(buffer)
 	bufPtr := C.malloc(C.size_t(samples) * 4)
-	cBuffer := (*[1 << 30]C.float)(unsafe.Pointer(bufPtr))
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  samples,
+                Cap:  samples,
+        }
+        cBuffer := *(*[]C.float)(unsafe.Pointer(&hdr))
 	for i := 0; i < samples; i++ {
 		cBuffer[i] = C.float(buffer[i])
 	}
@@ -478,7 +563,12 @@ func (p *PlaybackDevice) WriteFloat64(buffer []float64) (frames int, err error) 
 	}
 	samples := len(buffer)
 	bufPtr := C.malloc(C.size_t(samples) * 8)
-	cBuffer := (*[1 << 30]C.double)(unsafe.Pointer(bufPtr))
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  samples,
+                Cap:  samples,
+        }
+        cBuffer := *(*[]C.double)(unsafe.Pointer(&hdr))
 	for i := 0; i < samples; i++ {
 		cBuffer[i] = C.double(buffer[i])
 	}
