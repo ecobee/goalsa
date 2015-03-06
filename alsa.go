@@ -98,15 +98,15 @@ func (d *device) createDevice(deviceName string, channels int, format Format, ra
 	if ret < 0 {
 		return createError("could not set rate params", ret)
 	}
-	// Default buffer size: 1/4 of a second
-	// Default period size: 1/32 of a second
-	var period = C.snd_pcm_uframes_t(float32(rate * channels) / 32)
-	ret = C.snd_pcm_hw_params_set_period_size_near(d.h, hwParams, &period, nil)
+	// Default period size: 1/10 of a second
+	var period = C.uint(100000)
+	ret = C.snd_pcm_hw_params_set_period_time_near(d.h, hwParams, &period, nil)
 	if ret < 0 {
 		return createError("could not set period size", ret)
 	}
-	var bufferSize = C.snd_pcm_uframes_t(period * 8)
-	ret = C.snd_pcm_hw_params_set_period_size_near(d.h, hwParams, &bufferSize, nil)
+	// Default buffer size: 1/2 of a second
+	var bufferSize = period * 5
+	ret = C.snd_pcm_hw_params_set_buffer_time_near(d.h, hwParams, &bufferSize, nil)
 	if ret < 0 {
 		return createError("could not set buffer size", ret)
 	}
