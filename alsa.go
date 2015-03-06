@@ -371,11 +371,18 @@ func (c *CaptureDevice) ReadFloat64() (buffer []float64, err error) {
 	if err != nil {
 		return nil, err
 	}
-	buffer = make([]float64, frames * c.Channels)
-	cBuffer := (*[1 << 30]C.double)(unsafe.Pointer(bufPtr))
+	length := frames * c.Channels
+	buffer = make([]float64, length)
+	hdr := reflect.SliceHeader{
+                Data: uintptr(unsafe.Pointer(bufPtr)),
+                Len:  length,
+                Cap:  length,
+        }
+        cBuffer := *(*[]C.double)(unsafe.Pointer(&hdr))
 	for i := 0; i < frames; i++ {
 		for ch := 0; ch < c.Channels; ch++ {
-			buffer[i + ch] = float64(cBuffer[i + ch])
+			offs := i * c.Channels + ch
+			buffer[offs] = float64(cBuffer[offs])
 		}
 	}
 	C.free(bufPtr)
