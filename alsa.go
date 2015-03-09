@@ -131,8 +131,8 @@ func (d *device) Close() {
 	runtime.SetFinalizer(d, nil)
 }
 
-func formatSampleSize(format Format) (s int) {
-	switch format {
+func (d device) formatSampleSize() (s int) {
+	switch d.Format {
 	case FormatS8, FormatU8:
 		return 1
 	case FormatS16LE, FormatS16BE, FormatU16LE, FormatU16BE:
@@ -160,240 +160,53 @@ func NewCaptureDevice(deviceName string, channels int, format Format, rate int) 
 	return c, nil
 }
 
-func (c *CaptureDevice) doRead(size int) (frames int, bufPtr unsafe.Pointer, err error) {
-	bufPtr = C.malloc(C.size_t(size))
-	ret := C.snd_pcm_readi(c.h, bufPtr, C.snd_pcm_uframes_t(c.frames))
+// Read reads samples into a buffer and returns the amount read.
+func (c *CaptureDevice) Read(buffer interface {}) (samples int, err error) {
+	bufferType := reflect.TypeOf(buffer)
+	if !(bufferType.Kind() == reflect.Array ||
+		bufferType.Kind() == reflect.Slice) {
+		return 0, errors.New("Read requires an array type")
+	}
+
+	sizeError := errors.New("Read requires a matching sample size")
+	switch bufferType.Elem().Kind() {
+	case reflect.Int8:
+		if c.formatSampleSize() != 1 {
+			return 0, sizeError
+		}
+	case reflect.Int16:
+		if c.formatSampleSize() != 2 {
+			return 0, sizeError
+		}
+	case reflect.Int32, reflect.Float32:
+		if c.formatSampleSize() != 4 {
+			return 0, sizeError
+		}
+	case reflect.Float64:
+		if c.formatSampleSize() != 8 {
+			return 0, sizeError
+		}
+	default:
+		return 0, errors.New("Read does not support this format")
+	}
+
+	val := reflect.ValueOf(buffer)
+	length := val.Len()
+	sliceData := val.Slice(0, length)
+
+	var frames = C.snd_pcm_uframes_t(length / c.Channels)
+	bufPtr := unsafe.Pointer(sliceData.Index(0).Addr().Pointer())
+
+	ret := C.snd_pcm_readi(c.h, bufPtr, frames)
+
 	if ret == -C.EPIPE {
 		C.snd_pcm_prepare(c.h)
-		return 0, nil, errors.New("overrun\n")
+		return 0, errors.New("overrun\n")
 	} else if ret < 0 {
-		return 0, nil, createError("read error", C.int(ret))
+		return 0, createError("read error", C.int(ret))
 	}
-	return int(ret), bufPtr, nil
-}
-
-// ReadS8 returns a buffer of signed 8bit audio data.
-func (c *CaptureDevice) ReadS8() (buffer []int8, err error) {
-	sampleSize := formatSampleSize(c.Format)
-	if sampleSize != 1 {
-		return nil, errors.New("incompatible data format")
-	}
-	frames, bufPtr, err := c.doRead(c.frames * c.Channels * sampleSize)
-	if err != nil {
-		return nil, err
-	}
-	length := frames * c.Channels
-	buffer = make([]int8, length)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  length,
-                Cap:  length,
-        }
-        cBuffer := *(*[]C.int8_t)(unsafe.Pointer(&hdr))
-	for i := 0; i < frames; i++ {
-		for ch := 0; ch < c.Channels; ch++ {
-			offs := i * c.Channels + ch
-			buffer[offs] = int8(cBuffer[offs])
-		}
-	}
-	C.free(bufPtr)
-	return buffer, nil
-}
-
-// ReadU8 returns a buffer of unsigned 8bit audio data.
-func (c *CaptureDevice) ReadU8() (buffer []uint8, err error) {
-	sampleSize := formatSampleSize(c.Format)
-	if sampleSize != 1 {
-		return nil, errors.New("incompatible data format")
-	}
-	frames, bufPtr, err := c.doRead(c.frames * c.Channels * sampleSize)
-	if err != nil {
-		return nil, err
-	}
-	length := frames * c.Channels
-	buffer = make([]uint8, length)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  length,
-                Cap:  length,
-        }
-        cBuffer := *(*[]C.uint8_t)(unsafe.Pointer(&hdr))
-	for i := 0; i < frames; i++ {
-		for ch := 0; ch < c.Channels; ch++ {
-			offs := i * c.Channels + ch
-			buffer[offs] = uint8(cBuffer[offs])
-		}
-	}
-	C.free(bufPtr)
-	return buffer, nil
-}
-
-// ReadS16 returns a buffer of signed 16bit audio data.
-func (c *CaptureDevice) ReadS16() (buffer []int16, err error) {
-	sampleSize := formatSampleSize(c.Format)
-	if sampleSize != 2 {
-		return nil, errors.New("incompatible data format")
-	}
-	frames, bufPtr, err := c.doRead(c.frames * c.Channels * sampleSize)
-	if err != nil {
-		return nil, err
-	}
-	length := frames * c.Channels
-	buffer = make([]int16, length)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  length,
-                Cap:  length,
-        }
-        cBuffer := *(*[]C.int16_t)(unsafe.Pointer(&hdr))
-	for i := 0; i < frames; i++ {
-		for ch := 0; ch < c.Channels; ch++ {
-			offs := i * c.Channels + ch
-			buffer[offs] = int16(cBuffer[offs])
-		}
-	}
-	C.free(bufPtr)
-	return buffer, nil
-}
-
-// ReadU16 returns a buffer of unsigned 16bit audio data.
-func (c *CaptureDevice) ReadU16() (buffer []uint16, err error) {
-	sampleSize := formatSampleSize(c.Format)
-	if sampleSize != 2 {
-		return nil, errors.New("incompatible data format")
-	}
-	frames, bufPtr, err := c.doRead(c.frames * c.Channels * sampleSize)
-	if err != nil {
-		return nil, err
-	}
-	length := frames * c.Channels
-	buffer = make([]uint16, length)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  length,
-                Cap:  length,
-        }
-        cBuffer := *(*[]C.uint16_t)(unsafe.Pointer(&hdr))
-	for i := 0; i < frames; i++ {
-		for ch := 0; ch < c.Channels; ch++ {
-			offs := i * c.Channels + ch
-			buffer[offs] = uint16(cBuffer[offs])
-		}
-	}
-	C.free(bufPtr)
-	return buffer, nil
-}
-
-// ReadS32 returns a buffer of signed 32bit audio data.
-func (c *CaptureDevice) ReadS32() (buffer []int32, err error) {
-	sampleSize := formatSampleSize(c.Format)
-	if sampleSize != 4 {
-		return nil, errors.New("incompatible data format")
-	}
-	frames, bufPtr, err := c.doRead(c.frames * c.Channels * sampleSize)
-	if err != nil {
-		return nil, err
-	}
-	length := frames * c.Channels
-	buffer = make([]int32, length)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  length,
-                Cap:  length,
-        }
-        cBuffer := *(*[]C.int32_t)(unsafe.Pointer(&hdr))
-	for i := 0; i < frames; i++ {
-		for ch := 0; ch < c.Channels; ch++ {
-			offs := i * c.Channels + ch
-			buffer[offs] = int32(cBuffer[offs])
-		}
-	}
-	C.free(bufPtr)
-	return buffer, nil
-}
-
-// ReadU32 returns a buffer of unsigned 32bit audio data.
-func (c *CaptureDevice) ReadU32() (buffer []uint32, err error) {
-	sampleSize := formatSampleSize(c.Format)
-	if sampleSize != 4 {
-		return nil, errors.New("incompatible data format")
-	}
-	frames, bufPtr, err := c.doRead(c.frames * c.Channels * sampleSize)
-	if err != nil {
-		return nil, err
-	}
-	length := frames * c.Channels
-	buffer = make([]uint32, length)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  length,
-                Cap:  length,
-        }
-        cBuffer := *(*[]C.uint32_t)(unsafe.Pointer(&hdr))
-	for i := 0; i < frames; i++ {
-		for ch := 0; ch < c.Channels; ch++ {
-			offs := i * c.Channels + ch
-			buffer[offs] = uint32(cBuffer[offs])
-		}
-	}
-	C.free(bufPtr)
-	return buffer, nil
-}
-
-// ReadFloat returns a buffer of floating point 32bit audio data.
-func (c *CaptureDevice) ReadFloat() (buffer []float32, err error) {
-	sampleSize := formatSampleSize(c.Format)
-	if sampleSize != 4 {
-		return nil, errors.New("incompatible data format")
-	}
-	frames, bufPtr, err := c.doRead(c.frames * c.Channels * sampleSize)
-	if err != nil {
-		return nil, err
-	}
-	length := frames * c.Channels
-	buffer = make([]float32, length)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  length,
-                Cap:  length,
-        }
-        cBuffer := *(*[]C.float)(unsafe.Pointer(&hdr))
-	for i := 0; i < frames; i++ {
-		for ch := 0; ch < c.Channels; ch++ {
-			offs := i * c.Channels + ch
-			buffer[offs] = float32(cBuffer[offs])
-		}
-	}
-	C.free(bufPtr)
-	return buffer, nil
-}
-
-// ReadFloat64 returns a buffer of floating point 64bit audio data.
-func (c *CaptureDevice) ReadFloat64() (buffer []float64, err error) {
-	sampleSize := formatSampleSize(c.Format)
-	if sampleSize != 8 {
-		return nil, errors.New("incompatible data format")
-	}
-	frames, bufPtr, err := c.doRead(c.frames * c.Channels * sampleSize)
-	if err != nil {
-		return nil, err
-	}
-	length := frames * c.Channels
-	buffer = make([]float64, length)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  length,
-                Cap:  length,
-        }
-        cBuffer := *(*[]C.double)(unsafe.Pointer(&hdr))
-	for i := 0; i < frames; i++ {
-		for ch := 0; ch < c.Channels; ch++ {
-			offs := i * c.Channels + ch
-			buffer[offs] = float64(cBuffer[offs])
-		}
-	}
-	C.free(bufPtr)
-	return buffer, nil
+	samples = int(ret) * c.Channels
+	return
 }
 
 // PlaybackDevice is an ALSA device configured to playback audio.
@@ -411,182 +224,50 @@ func NewPlaybackDevice(deviceName string, channels int, format Format, rate int)
 	return p, nil
 }
 
-func (p *PlaybackDevice) doWrite(buffer unsafe.Pointer, samples int) (written int, err error) {
-	frames := samples / p.Channels
-	ret := C.snd_pcm_writei(p.h, buffer, C.snd_pcm_uframes_t(frames))
+// Write writes a buffer of data to a playback device.
+func (p *PlaybackDevice) Write(buffer interface {}) (samples int, err error) {
+	bufferType := reflect.TypeOf(buffer)
+	if !(bufferType.Kind() == reflect.Array ||
+		bufferType.Kind() == reflect.Slice) {
+		return 0, errors.New("Write requires an array type")
+	}
+
+	sizeError := errors.New("Write requires a matching sample size")
+	switch bufferType.Elem().Kind() {
+	case reflect.Int8:
+		if p.formatSampleSize() != 1 {
+			return 0, sizeError
+		}
+	case reflect.Int16:
+		if p.formatSampleSize() != 2 {
+			return 0, sizeError
+		}
+	case reflect.Int32, reflect.Float32:
+		if p.formatSampleSize() != 4 {
+			return 0, sizeError
+		}
+	case reflect.Float64:
+		if p.formatSampleSize() != 8 {
+			return 0, sizeError
+		}
+	default:
+		return 0, errors.New("Write does not support this format")
+	}
+
+	val := reflect.ValueOf(buffer)
+	length := val.Len()
+	sliceData := val.Slice(0, length)
+
+	var frames = C.snd_pcm_uframes_t(length / p.Channels)
+	bufPtr := unsafe.Pointer(sliceData.Index(0).Addr().Pointer())
+
+	ret := C.snd_pcm_writei(p.h, bufPtr, frames)
 	if ret == -C.EPIPE {
 		C.snd_pcm_prepare(p.h)
 		return 0, errors.New("underrun\n")
 	} else if ret < 0 {
 		return 0, createError("write error", C.int(ret))
 	}
-	return int(ret), nil
-}
-
-// WriteS8 writes a buffer of signed 8bit data to a playback device.
-func (p *PlaybackDevice) WriteS8(buffer []int8) (frames int, err error) {
-	if formatSampleSize(p.Format) != 1 {
-		return 0, errors.New("incompatible data format")
-	}
-	samples := len(buffer)
-	bufPtr := C.malloc(C.size_t(samples))
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  samples,
-                Cap:  samples,
-        }
-        cBuffer := *(*[]C.int8_t)(unsafe.Pointer(&hdr))
-	for i := 0; i < samples; i++ {
-		cBuffer[i] = C.int8_t(buffer[i])
-	}
-	frames, err = p.doWrite(bufPtr, samples)
-	C.free(bufPtr)
-	return
-}
-
-// WriteU8 writes a buffer of unsigned 8bit data to a playback device.
-func (p *PlaybackDevice) WriteU8(buffer []uint8) (frames int, err error) {
-	if formatSampleSize(p.Format) != 1 {
-		return 0, errors.New("incompatible data format")
-	}
-	samples := len(buffer)
-	bufPtr := C.malloc(C.size_t(samples))
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  samples,
-                Cap:  samples,
-        }
-        cBuffer := *(*[]C.uint8_t)(unsafe.Pointer(&hdr))
-	for i := 0; i < samples; i++ {
-		cBuffer[i] = C.uint8_t(buffer[i])
-	}
-	frames, err = p.doWrite(bufPtr, samples)
-	C.free(bufPtr)
-	return
-}
-
-// WriteS16 writes a buffer of signed 16bit data to a playback device.
-func (p *PlaybackDevice) WriteS16(buffer []int16) (frames int, err error) {
-	if formatSampleSize(p.Format) != 2 {
-		return 0, errors.New("incompatible data format")
-	}
-	samples := len(buffer)
-	bufPtr := C.malloc(C.size_t(samples) * 2)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  samples,
-                Cap:  samples,
-        }
-        cBuffer := *(*[]C.int16_t)(unsafe.Pointer(&hdr))
-	for i := 0; i < samples; i++ {
-		cBuffer[i] = C.int16_t(buffer[i])
-	}
-	frames, err = p.doWrite(bufPtr, samples)
-	C.free(bufPtr)
-	return
-}
-
-// WriteU16 writes a buffer of unsigned 16bit data to a playback device.
-func (p *PlaybackDevice) WriteU16(buffer []uint16) (frames int, err error) {
-	if formatSampleSize(p.Format) != 2 {
-		return 0, errors.New("incompatible data format")
-	}
-	samples := len(buffer)
-	bufPtr := C.malloc(C.size_t(samples) * 2)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  samples,
-                Cap:  samples,
-        }
-        cBuffer := *(*[]C.uint16_t)(unsafe.Pointer(&hdr))
-	for i := 0; i < samples; i++ {
-		cBuffer[i] = C.uint16_t(buffer[i])
-	}
-	frames, err = p.doWrite(bufPtr, samples)
-	C.free(bufPtr)
-	return
-}
-
-// WriteS32 writes a buffer of signed 32bit data to a playback device.
-func (p *PlaybackDevice) WriteS32(buffer []int32) (frames int, err error) {
-	if formatSampleSize(p.Format) != 4 {
-		return 0, errors.New("incompatible data format")
-	}
-	samples := len(buffer)
-	bufPtr := C.malloc(C.size_t(samples) * 4)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  samples,
-                Cap:  samples,
-        }
-        cBuffer := *(*[]C.int32_t)(unsafe.Pointer(&hdr))
-	for i := 0; i < samples; i++ {
-		cBuffer[i] = C.int32_t(buffer[i])
-	}
-	frames, err = p.doWrite(bufPtr, samples)
-	C.free(bufPtr)
-	return
-}
-
-// WriteU32 writes a buffer of unsigned 32bit data to a playback device.
-func (p *PlaybackDevice) WriteU32(buffer []uint32) (frames int, err error) {
-	if formatSampleSize(p.Format) != 4 {
-		return 0, errors.New("incompatible data format")
-	}
-	samples := len(buffer)
-	bufPtr := C.malloc(C.size_t(samples) * 4)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  samples,
-                Cap:  samples,
-        }
-        cBuffer := *(*[]C.uint32_t)(unsafe.Pointer(&hdr))
-	for i := 0; i < samples; i++ {
-		cBuffer[i] = C.uint32_t(buffer[i])
-	}
-	frames, err = p.doWrite(bufPtr, samples)
-	C.free(bufPtr)
-	return
-}
-
-// WriteFloat writes a buffer of floating point 32bit data to a playback device.
-func (p *PlaybackDevice) WriteFloat(buffer []float32) (frames int, err error) {
-	if formatSampleSize(p.Format) != 4 {
-		return 0, errors.New("incompatible data format")
-	}
-	samples := len(buffer)
-	bufPtr := C.malloc(C.size_t(samples) * 4)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  samples,
-                Cap:  samples,
-        }
-        cBuffer := *(*[]C.float)(unsafe.Pointer(&hdr))
-	for i := 0; i < samples; i++ {
-		cBuffer[i] = C.float(buffer[i])
-	}
-	frames, err = p.doWrite(bufPtr, samples)
-	C.free(bufPtr)
-	return
-}
-
-// WriteFloat64 writes a buffer of floating point 64bit data to a playback device.
-func (p *PlaybackDevice) WriteFloat64(buffer []float64) (frames int, err error) {
-	if formatSampleSize(p.Format) != 8 {
-		return 0, errors.New("incompatible data format")
-	}
-	samples := len(buffer)
-	bufPtr := C.malloc(C.size_t(samples) * 8)
-	hdr := reflect.SliceHeader{
-                Data: uintptr(unsafe.Pointer(bufPtr)),
-                Len:  samples,
-                Cap:  samples,
-        }
-        cBuffer := *(*[]C.double)(unsafe.Pointer(&hdr))
-	for i := 0; i < samples; i++ {
-		cBuffer[i] = C.double(buffer[i])
-	}
-	frames, err = p.doWrite(bufPtr, samples)
-	C.free(bufPtr)
+	samples = int(ret) * p.Channels
 	return
 }

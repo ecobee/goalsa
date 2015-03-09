@@ -22,14 +22,15 @@ func TestCapture(t *testing.T) {
 
 	a.NoError(err, "created capture device")
 
-	b1, err := c.ReadS8()
+	b1 := make([]int8, 100)
+	samples, err := c.Read(b1)
 
 	a.Error(err, "wrong type error")
-	a.Equal(b1, ([]int8)(nil), "no buffer allocated")
+	a.Equal(samples, 0, "no samples read")
 
-	b2, err := c.ReadS32()
+	b2 := make([]int32, 200)
+	samples, err = c.Read(b2)
 
-	samples := 100000
 	a.NoError(err, "read samples ok")
 	a.Equal(len(b2), samples, "correct number of samples read")
 
@@ -49,13 +50,13 @@ func TestPlayback(t *testing.T) {
 	a.NoError(err, "created playback device")
 
 	b1 := make([]int8, 100)
-	frames, err := p.WriteS8(b1)
+	frames, err := p.Write(b1)
 
 	a.Error(err, "wrong type error")
 	a.Equal(frames, 0, "no frames written")
 
 	b2 := make([]int32, 100)
-	frames, err = p.WriteS32(b2)
+	frames, err = p.Write(b2)
 
 	a.NoError(err, "buffer written ok")
 	a.Equal(frames, 100, "100 frames written")
