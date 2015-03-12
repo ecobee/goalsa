@@ -25,32 +25,32 @@ type Format C.snd_pcm_format_t
 
 // The range of sample formats supported by ALSA.
 const (
-	FormatS8 		= C.SND_PCM_FORMAT_S8
-	FormatU8 		= C.SND_PCM_FORMAT_U8
-	FormatS16LE 		= C.SND_PCM_FORMAT_S16_LE
-	FormatS16BE 		= C.SND_PCM_FORMAT_S16_BE
-	FormatU16LE	 	= C.SND_PCM_FORMAT_U16_LE
-	FormatU16BE 		= C.SND_PCM_FORMAT_U16_BE
-	FormatS24LE 		= C.SND_PCM_FORMAT_S24_LE
-	FormatS24BE	 	= C.SND_PCM_FORMAT_S24_BE
-	FormatU24LE 		= C.SND_PCM_FORMAT_U24_LE
-	FormatU24BE 		= C.SND_PCM_FORMAT_U24_BE
-	FormatS32LE 		= C.SND_PCM_FORMAT_S32_LE
-	FormatS32BE 		= C.SND_PCM_FORMAT_S32_BE
-	FormatU32LE 		= C.SND_PCM_FORMAT_U32_LE
-	FormatU32BE 		= C.SND_PCM_FORMAT_U32_BE
-	FormatFloatLE 		= C.SND_PCM_FORMAT_FLOAT_LE
-	FormatFloatBE 		= C.SND_PCM_FORMAT_FLOAT_BE
-	FormatFloat64LE 	= C.SND_PCM_FORMAT_FLOAT64_LE
-	FormatFloat64BE		= C.SND_PCM_FORMAT_FLOAT64_BE
+	FormatS8        = C.SND_PCM_FORMAT_S8
+	FormatU8        = C.SND_PCM_FORMAT_U8
+	FormatS16LE     = C.SND_PCM_FORMAT_S16_LE
+	FormatS16BE     = C.SND_PCM_FORMAT_S16_BE
+	FormatU16LE     = C.SND_PCM_FORMAT_U16_LE
+	FormatU16BE     = C.SND_PCM_FORMAT_U16_BE
+	FormatS24LE     = C.SND_PCM_FORMAT_S24_LE
+	FormatS24BE     = C.SND_PCM_FORMAT_S24_BE
+	FormatU24LE     = C.SND_PCM_FORMAT_U24_LE
+	FormatU24BE     = C.SND_PCM_FORMAT_U24_BE
+	FormatS32LE     = C.SND_PCM_FORMAT_S32_LE
+	FormatS32BE     = C.SND_PCM_FORMAT_S32_BE
+	FormatU32LE     = C.SND_PCM_FORMAT_U32_LE
+	FormatU32BE     = C.SND_PCM_FORMAT_U32_BE
+	FormatFloatLE   = C.SND_PCM_FORMAT_FLOAT_LE
+	FormatFloatBE   = C.SND_PCM_FORMAT_FLOAT_BE
+	FormatFloat64LE = C.SND_PCM_FORMAT_FLOAT64_LE
+	FormatFloat64BE = C.SND_PCM_FORMAT_FLOAT64_BE
 )
 
 type device struct {
-	h *C.snd_pcm_t
+	h        *C.snd_pcm_t
 	Channels int
-	Format Format
-	Rate int
-	frames int
+	Format   Format
+	Rate     int
+	frames   int
 }
 
 func createError(errorMsg string, errorCode C.int) (err error) {
@@ -161,7 +161,7 @@ func NewCaptureDevice(deviceName string, channels int, format Format, rate int) 
 }
 
 // Read reads samples into a buffer and returns the amount read.
-func (c *CaptureDevice) Read(buffer interface {}) (samples int, err error) {
+func (c *CaptureDevice) Read(buffer interface{}) (samples int, err error) {
 	bufferType := reflect.TypeOf(buffer)
 	if !(bufferType.Kind() == reflect.Array ||
 		bufferType.Kind() == reflect.Slice) {
@@ -225,7 +225,7 @@ func NewPlaybackDevice(deviceName string, channels int, format Format, rate int)
 }
 
 // Write writes a buffer of data to a playback device.
-func (p *PlaybackDevice) Write(buffer interface {}) (samples int, err error) {
+func (p *PlaybackDevice) Write(buffer interface{}) (samples int, err error) {
 	bufferType := reflect.TypeOf(buffer)
 	if !(bufferType.Kind() == reflect.Array ||
 		bufferType.Kind() == reflect.Slice) {
