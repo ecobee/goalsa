@@ -45,6 +45,11 @@ const (
 	FormatFloat64BE = C.SND_PCM_FORMAT_FLOAT64_BE
 )
 
+var (
+	ErrOverrun	= errors.New("overrun")
+	ErrUnderrun	= errors.New("underrun")
+)
+
 type device struct {
 	h        *C.snd_pcm_t
 	Channels int
@@ -201,7 +206,7 @@ func (c *CaptureDevice) Read(buffer interface{}) (samples int, err error) {
 
 	if ret == -C.EPIPE {
 		C.snd_pcm_prepare(c.h)
-		return 0, errors.New("overrun\n")
+		return 0, ErrOverrun
 	} else if ret < 0 {
 		return 0, createError("read error", C.int(ret))
 	}
@@ -264,7 +269,7 @@ func (p *PlaybackDevice) Write(buffer interface{}) (samples int, err error) {
 	ret := C.snd_pcm_writei(p.h, bufPtr, frames)
 	if ret == -C.EPIPE {
 		C.snd_pcm_prepare(p.h)
-		return 0, errors.New("underrun\n")
+		return 0, ErrUnderrun
 	} else if ret < 0 {
 		return 0, createError("write error", C.int(ret))
 	}
