@@ -46,16 +46,26 @@ const (
 )
 
 var (
-	ErrOverrun	= errors.New("overrun")
-	ErrUnderrun	= errors.New("underrun")
+	// ErrOverrun signals an overrun error
+	ErrOverrun = errors.New("overrun")
+	// ErrUnderrun signals an underrun error
+	ErrUnderrun = errors.New("underrun")
 )
 
+// BufferParams specifies the buffer parameters of a device.
+type BufferParams struct {
+	BufferFrames int
+	PeriodFrames int
+	Periods      int
+}
+
 type device struct {
-	h        *C.snd_pcm_t
-	Channels int
-	Format   Format
-	Rate     int
-	frames   int
+	h            *C.snd_pcm_t
+	Channels     int
+	Format       Format
+	Rate         int
+	BufferParams BufferParams
+	frames       int
 }
 
 func createError(errorMsg string, errorCode C.int) (err error) {
@@ -64,7 +74,7 @@ func createError(errorMsg string, errorCode C.int) (err error) {
 	return
 }
 
-func (d *device) createDevice(deviceName string, channels int, format Format, rate int, playback bool) (err error) {
+func (d *device) createDevice(deviceName string, channels int, format Format, rate int, playback bool, bufferParams BufferParams) (err error) {
 	deviceCString := C.CString(deviceName)
 	defer C.free(unsafe.Pointer(deviceCString))
 	var ret C.int
@@ -103,26 +113,45 @@ func (d *device) createDevice(deviceName string, channels int, format Format, ra
 	if ret < 0 {
 		return createError("could not set rate params", ret)
 	}
-	// Default period size: 1/10 of a second
-	var period = C.uint(100000)
-	ret = C.snd_pcm_hw_params_set_period_time_near(d.h, hwParams, &period, nil)
+	var bufferSize = C.snd_pcm_uframes_t(bufferParams.BufferFrames)
+	if bufferParams.BufferFrames == 0 {
+		// Default buffer size: max buffer size
+		ret = C.snd_pcm_hw_params_get_buffer_size_max(hwParams, &bufferSize)
+		if ret < 0 {
+			return createError("could not get buffer size", ret)
+		}
+	}
+	ret = C.snd_pcm_hw_params_set_buffer_size_near(d.h, hwParams, &bufferSize)
+	if ret < 0 {
+		return createError("could not set buffer size", ret)
+	}
+	// Default period size: 1/4 of buffer size
+	var periodFrames = C.snd_pcm_uframes_t(bufferSize / 4)
+	if bufferParams.PeriodFrames > 0 {
+		periodFrames = C.snd_pcm_uframes_t(bufferParams.PeriodFrames)
+	} else if bufferParams.Periods > 0 {
+		periodFrames = C.snd_pcm_uframes_t(int(bufferSize) / bufferParams.Periods)
+	}
+	ret = C.snd_pcm_hw_params_set_period_size_near(d.h, hwParams, &periodFrames, nil)
 	if ret < 0 {
 		return createError("could not set period size", ret)
 	}
-	// Default buffer size: 1/2 of a second
-	var bufferSize = period * 5
-	ret = C.snd_pcm_hw_params_set_buffer_time_near(d.h, hwParams, &bufferSize, nil)
+	var periods = C.uint(0)
+	ret = C.snd_pcm_hw_params_get_periods(hwParams, &periods, nil)
 	if ret < 0 {
-		return createError("could not set buffer size", ret)
+		return createError("could not get periods", ret)
 	}
 	ret = C.snd_pcm_hw_params(d.h, hwParams)
 	if ret < 0 {
 		return createError("could not set hw params", ret)
 	}
-	d.frames = int(period)
+	d.frames = int(periodFrames)
 	d.Channels = channels
 	d.Format = format
 	d.Rate = rate
+	d.BufferParams.BufferFrames = int(bufferSize)
+	d.BufferParams.PeriodFrames = int(periodFrames)
+	d.BufferParams.Periods = int(periods)
 	return
 }
 
@@ -156,9 +185,9 @@ type CaptureDevice struct {
 }
 
 // NewCaptureDevice creates a new CaptureDevice object.
-func NewCaptureDevice(deviceName string, channels int, format Format, rate int) (c *CaptureDevice, err error) {
+func NewCaptureDevice(deviceName string, channels int, format Format, rate int, bufferParams BufferParams) (c *CaptureDevice, err error) {
 	c = new(CaptureDevice)
-	err = c.createDevice(deviceName, channels, format, rate, false)
+	err = c.createDevice(deviceName, channels, format, rate, false, bufferParams)
 	if err != nil {
 		return nil, err
 	}
@@ -220,9 +249,9 @@ type PlaybackDevice struct {
 }
 
 // NewPlaybackDevice creates a new PlaybackDevice object.
-func NewPlaybackDevice(deviceName string, channels int, format Format, rate int) (p *PlaybackDevice, err error) {
+func NewPlaybackDevice(deviceName string, channels int, format Format, rate int, bufferParams BufferParams) (p *PlaybackDevice, err error) {
 	p = new(PlaybackDevice)
-	err = p.createDevice(deviceName, channels, format, rate, true)
+	err = p.createDevice(deviceName, channels, format, rate, true, bufferParams)
 	if err != nil {
 		return nil, err
 	}

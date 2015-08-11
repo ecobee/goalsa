@@ -13,12 +13,13 @@ import (
 func TestCapture(t *testing.T) {
 	a := assert.New(t)
 
-	c, err := NewCaptureDevice("nonexistent", 1, FormatS16LE, 44100)
+	c, err := NewCaptureDevice("nonexistent", 1, FormatS16LE, 44100,
+		BufferParams{})
 
 	a.Equal(c, (*CaptureDevice)(nil), "capture device is nil")
 	a.Error(err, "no device error")
 
-	c, err = NewCaptureDevice("null", 1, FormatS32LE, 44100)
+	c, err = NewCaptureDevice("null", 1, FormatS32LE, 44100, BufferParams{})
 
 	a.NoError(err, "created capture device")
 
@@ -40,12 +41,14 @@ func TestCapture(t *testing.T) {
 func TestPlayback(t *testing.T) {
 	a := assert.New(t)
 
-	p, err := NewPlaybackDevice("nonexistent", 1, FormatS16LE, 44100)
+	p, err := NewPlaybackDevice("nonexistent", 1, FormatS16LE, 44100,
+		BufferParams{})
 
 	a.Equal(p, (*PlaybackDevice)(nil), "playback device is nil")
 	a.Error(err, "no device error")
 
-	p, err = NewPlaybackDevice("null", 1, FormatS32LE, 44100)
+	p, err = NewPlaybackDevice("null", 1, FormatS32LE, 44100,
+		BufferParams{})
 
 	a.NoError(err, "created playback device")
 
