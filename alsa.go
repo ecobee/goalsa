@@ -125,8 +125,8 @@ func (d *device) createDevice(deviceName string, channels int, format Format, ra
 	if ret < 0 {
 		return createError("could not set buffer size", ret)
 	}
-	// Default period size: 1/4 of buffer size
-	var periodFrames = C.snd_pcm_uframes_t(bufferSize / 4)
+	// Default period size: 1/8 of a second
+	var periodFrames = C.snd_pcm_uframes_t(rate / 8)
 	if bufferParams.PeriodFrames > 0 {
 		periodFrames = C.snd_pcm_uframes_t(bufferParams.PeriodFrames)
 	} else if bufferParams.Periods > 0 {
