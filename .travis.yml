@@ -6,11 +6,10 @@ addons:
     packages:
       - libasound2-dev
 before_install:
-  - go get github.com/axw/gocov/gocov
-  - go get github.com/mattn/goveralls
-  - if ! go get github.com/golang/tools/cmd/cover; then go get golang.org/x/tools/cmd/cover; fi
-  - pip install --user codecov
+  - go get github.com/onsi/gomega
+  - go get github.com/onsi/ginkgo
+  - go get code.google.com/p/go.tools/cmd/cover
 script:
-  - $HOME/gopath/bin/goveralls -service=travis-ci
+  - go test -coverprofile=coverage.txt -covermode=atomic
 after_success:
-  - codecov
+  - bash <(curl -s https://codecov.io/bash)
