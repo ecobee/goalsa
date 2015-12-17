@@ -13,4 +13,4 @@ before_install:
 script:
   - $HOME/gopath/bin/goveralls -service=travis-ci
 after_success:
-  - codecov --token=c483d54e-2449-45c4-be9a-18dee8f94ccb
+  - codecov
