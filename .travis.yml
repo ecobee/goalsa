@@ -8,7 +8,7 @@ addons:
 before_install:
   - go get github.com/onsi/gomega
   - go get github.com/onsi/ginkgo
-  - go get golang.org/x/tools/cmd/cover
+  - go get code.google.com/p/go.tools/cmd/cover
 script:
   - go test -coverprofile=coverage.txt -covermode=atomic
 after_success:
