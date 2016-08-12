@@ -1,4 +1,4 @@
-// Copyright 2015 Cocoon Alarm Ltd.
+// Copyright 2015-2016 Cocoon Labs Ltd.
 //
 // See LICENSE file for terms and conditions.
 
