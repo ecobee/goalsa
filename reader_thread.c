@@ -1,4 +1,4 @@
-// In process with a mixture of IO and CPU bound goroutines
+// In a process with a mixture of IO and CPU bound goroutines
 // (e.g. reading from alsa while compressing a jpeg snapshot) the IO bound
 // thread can experience very high latencies as it gets stuck behind the cpu
 // bound tasks. On a fully loaded machine this can exceed the maximum
@@ -156,6 +156,7 @@ reader_thread_state *reader_thread_start(snd_pcm_t *h, int bytes, int frames, in
 
 error:
     free(s->buf);
+    free(s);
     return NULL;
 }
 
