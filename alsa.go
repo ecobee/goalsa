@@ -15,6 +15,7 @@ import (
 
 /*
 #cgo LDFLAGS: -lasound
+#include "reader_thread.h"
 #include <alsa/asoundlib.h>
 #include <stdint.h>
 */
@@ -66,6 +67,7 @@ type device struct {
 	Rate         int
 	BufferParams BufferParams
 	frames       int
+	readerThread *C.reader_thread_state
 }
 
 func createError(errorMsg string, errorCode C.int) (err error) {
@@ -162,6 +164,10 @@ func (d *device) Close() {
 		C.snd_pcm_close(d.h)
 		d.h = nil
 	}
+	if d.readerThread != nil {
+		C.reader_thread_stop(d.readerThread)
+		d.readerThread = nil
+	}
 	runtime.SetFinalizer(d, nil)
 }
 
@@ -192,6 +198,20 @@ func NewCaptureDevice(deviceName string, channels int, format Format, rate int, 
 		return nil, err
 	}
 	return c, nil
+}
+
+func (c *CaptureDevice) StartReadThread() error {
+	if c.readerThread != nil {
+		return errors.New("Reader thread already running")
+	}
+	periodBytes := C.int(c.formatSampleSize() * c.Channels * c.BufferParams.PeriodFrames)
+	// Alocate a 1 second buffer
+	nbuf := C.int(c.Rate / c.BufferParams.PeriodFrames)
+	c.readerThread = C.reader_thread_start(c.h, periodBytes, C.int(c.BufferParams.PeriodFrames), nbuf)
+	if c.readerThread == nil {
+		return fmt.Errorf("C.reader_thread_start: %s", C.GoString(C.reader_thread_error))
+	}
+	return nil
 }
 
 // Read reads samples into a buffer and returns the amount read.
@@ -228,18 +248,31 @@ func (c *CaptureDevice) Read(buffer interface{}) (samples int, err error) {
 	length := val.Len()
 	sliceData := val.Slice(0, length)
 
-	var frames = C.snd_pcm_uframes_t(length / c.Channels)
+	frames := length / c.Channels
 	bufPtr := unsafe.Pointer(sliceData.Index(0).Addr().Pointer())
 
-	ret := C.snd_pcm_readi(c.h, bufPtr, frames)
+	if c.readerThread != nil {
+		if frames != c.BufferParams.PeriodFrames {
+			return 0, errors.New("buffer size must match period")
+		}
+		rc := C.reader_thread_poll(c.readerThread, bufPtr)
+		if rc == 1 {
+			return 0, ErrOverrun
+		} else if rc != 0 {
+			return 0, fmt.Errorf("read error: %s", C.GoString(C.reader_thread_error))
+		}
+		samples = frames * c.Channels
+	} else {
+		ret := C.snd_pcm_readi(c.h, bufPtr, C.snd_pcm_uframes_t(frames))
 
-	if ret == -C.EPIPE {
-		C.snd_pcm_prepare(c.h)
-		return 0, ErrOverrun
-	} else if ret < 0 {
-		return 0, createError("read error", C.int(ret))
+		if ret == -C.EPIPE {
+			C.snd_pcm_prepare(c.h)
+			return 0, ErrOverrun
+		} else if ret < 0 {
+			return 0, createError("read error", C.int(ret))
+		}
+		samples = int(ret) * c.Channels
 	}
-	samples = int(ret) * c.Channels
 	return
 }
 
