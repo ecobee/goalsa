@@ -171,9 +171,6 @@ func (d *device) Close() {
 	runtime.SetFinalizer(d, nil)
 }
 
-func (c *CaptureDevice) Close() {
-}
-
 func (d device) formatSampleSize() (s int) {
 	switch d.Format {
 	case FormatS8, FormatU8:

@@ -74,7 +74,7 @@ static void *reader_thread_loop(void *arg)
             s->error = true;
             s->stop = true;
         } else if (s->overrun) {
-            // Drop data while waitng for _poll to clear overrun
+            // Drop data while waiting for _poll to clear overrun
         } else {
             if (s->head_offset == s->tail_offset) {
                 pthread_cond_signal(&s->cond);
@@ -87,8 +87,8 @@ static void *reader_thread_loop(void *arg)
     return NULL;
 }
 
+// Copy one block (period_bytes) of audio data into buf
 // Returns 0 on success, 1 on overrun, -1 on error.
-// Also sets *buf_p on success;
 int reader_thread_poll(reader_thread_state *s, void *buf)
 {
     int ret = -1;
